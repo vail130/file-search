@@ -1,8 +1,8 @@
-# file-search
+# filesearch
 
 ## Usage
 
 ```sh
-file-search /path-to-search/ "*.js"
-file-search /path-to-search/ "^.+\.js$" -r
+filesearch /path-to-search/ "*.js"
+filesearch /path-to-search/ "^.+\.js$" -r
 ```
