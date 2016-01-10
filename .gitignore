@@ -31,6 +31,9 @@
 # Debug files
 *.dSYM/
 
+# Generated files
+autom4te.cache/
+
 # Logs
 *.log
 *.trs
