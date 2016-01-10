@@ -31,3 +31,24 @@
 # Debug files
 *.dSYM/
 
+# Generated files
+*.in
+Makefile
+configure
+libtool
+stamp-h1
+build-aux/
+autom4te*
+autom4te*/*
+.deps/
+.libs/
+m4/
+aclocal.m4
+config.h.in
+config.h
+config.status
+
+# Logs
+*.log
+*.trs
+

@@ -1,5 +1,5 @@
-#include <argp.h>
 #include <dirent.h>
+#include <errno.h>
 #include <glob.h>
 #include <regex.h> 
 #include <stdbool.h>
@@ -10,13 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-typedef enum { GLOB_MODE, REGEX_MODE } PatternMode;
-typedef enum { ALL_TYPE, FILE_TYPE, DIR_TYPE } ResultType;
-typedef struct config {
-    PatternMode mode;
-    ResultType type;
-    bool show_stats;
-} Config;
+#include "filesearch.h"
 
 bool object_exists(const char *path, const char *type) {
     struct stat s;
@@ -68,7 +62,7 @@ int print_object_with_stats(const char *path) {
 
 int print_glob_matching_files(const char *path, const char *pattern, Config opts) {
     bool path_has_slash = strncmp(&path[strlen(path)-1], "/", 1) == 0 ? 1 : 0;
-    char* fixed_path = (char *)malloc(sizeof(char*) * strlen(path) + (path_has_slash ? 0 : 1));
+    char *fixed_path = (char *)malloc(sizeof(char*) * strlen(path) + (path_has_slash ? 0 : 1));
     strcpy(fixed_path, path);
     if (!path_has_slash) {
         strcat(fixed_path, "/");
@@ -102,50 +96,47 @@ int print_glob_matching_files(const char *path, const char *pattern, Config opts
     }
     globfree(&paths);
     
-    DIR *dp1, *dp2;
-    dp1 = opendir(fixed_path);
-    if (dp1 == NULL) {
+    DIR *dp;
+    dp = opendir(fixed_path);
+    if (dp == NULL) {
         return -1;
     }
     
     struct dirent *entry;
-    while((entry = readdir(dp1))) {
-        // Compare more characters than length of test strings to ensure equality
-        if (strncmp(entry->d_name, ".", 2) == 0 || strncmp(entry->d_name, "..", 3) == 0) {
+    while((entry = readdir(dp))) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
         char sub_dir_path[strlen(fixed_path) + strlen(entry->d_name)];
         strcpy(sub_dir_path, fixed_path);
         strcat(sub_dir_path, entry->d_name);
 
-        dp2 = opendir(sub_dir_path);
-        if (dp2 != NULL) {
-            closedir(dp2);
+        if (object_matches_type(sub_dir_path, DIR_TYPE)) {
             print_glob_matching_files(sub_dir_path, pattern, opts);
         }
     }
 
     free(fixed_path);
-    closedir(dp1);
+    closedir(dp);
     return retval;
 }
 
 int print_regex_matching_files(const char *path, regex_t regex, Config opts) {
     bool path_has_slash = strncmp(&path[strlen(path)-1], "/", 1) == 0 ? 1 : 0;
-    char* fixed_path = (char *)malloc(sizeof(char*) * strlen(path) + (path_has_slash ? 0 : 1));
+    char *fixed_path = (char *)malloc(sizeof(char*) * strlen(path) + (path_has_slash ? 0 : 1));
     strcpy(fixed_path, path);
     if (!path_has_slash) {
         strcat(fixed_path, "/");
     }
 
-    DIR *dp1, *dp2;
-    dp1 = opendir(fixed_path);
-    if (dp1 == NULL) {
+    DIR *dp;
+    dp = opendir(fixed_path);
+    if (dp == NULL) {
         return -1;
     }
 
     struct dirent *entry;
-    while((entry = readdir(dp1))) {
+    while((entry = readdir(dp))) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
@@ -168,15 +159,13 @@ int print_regex_matching_files(const char *path, regex_t regex, Config opts) {
             }
         }
 
-        dp2 = opendir(sub_dir_path);
-        if (dp2 != NULL) {
-            closedir(dp2);
+        if (object_matches_type(sub_dir_path, DIR_TYPE)) {
             print_regex_matching_files(sub_dir_path, regex, opts);
         }
     }
 
     free(fixed_path);
-    closedir(dp1);
+    closedir(dp);
     return 0;
 }
 
@@ -205,71 +194,3 @@ int filesearch(const char *path, const char *pattern, Config opts) {
     }
 }
 
-const char *argp_program_version = "filesearch 0.0.3";
-const char *argp_program_bug_address = "https://github.com/vail130/filesearch/issues";
-static char doc[] = "Find files with an easy syntax";
-static char args_doc[] = "[PATH] [PATTERN]";
-static struct argp_option options[] = { 
-    { "regex", 'r', 0, 0, "Use regular expression pattern to match filenames."},
-    { "type", 't', "TYPE", 0, "Types of objects to include in output: f (files) or d (directories)"},
-    { "stats", 's', 0, 0, "Print stats for each result."},
-    { 0 }
-};
-const int NUM_ARGS = 2;
-struct arguments {
-    char *args[2];
-    PatternMode mode;
-    ResultType type;
-    bool show_stats;
-};
-
-static error_t parse_opt(int key, char *arg, struct argp_state *state) {
-    struct arguments *arguments = state->input;
-    switch (key) {
-        case 'r':
-            arguments->mode = REGEX_MODE;
-            break;
-        case 's':
-            arguments->show_stats = true;
-            break;
-        case 't':
-            if (strcmp(arg, "f") == 0 || strcmp(arg, "=f") == 0) {
-                arguments->type = FILE_TYPE;
-            } else if (strcmp(arg, "d") == 0 || strcmp(arg, "=d") == 0) {
-                arguments->type = DIR_TYPE;
-            } else {
-                arguments->type = ALL_TYPE;
-            }
-            break;
-        case ARGP_KEY_ARG:
-            if (state->arg_num >= NUM_ARGS) {
-                argp_usage(state);
-            }
-            arguments->args[state->arg_num] = arg;
-            break;
-        case ARGP_KEY_END:
-            if (state->arg_num < NUM_ARGS) {
-                argp_usage(state);
-            }
-            break;
-        default:
-            return ARGP_ERR_UNKNOWN;
-    }   
-    return 0;
-}
-
-static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
-
-int main(int argc, char *argv[]) {
-    struct arguments arguments;
-    arguments.mode = GLOB_MODE;
-    arguments.type = ALL_TYPE;
-    arguments.show_stats = false;
-    argp_parse(&argp, argc, argv, 0, 0, &arguments);
-    
-    Config opts;
-    opts.mode = arguments.mode;
-    opts.type = arguments.type;
-    opts.show_stats = arguments.show_stats;
-    return filesearch(arguments.args[0], arguments.args[1], opts);
-}
