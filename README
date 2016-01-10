@@ -1,9 +1,15 @@
 # filesearch
 
-## Build
+## Setup
 
 ```sh
-make build
+./configure && make
+```
+
+## Run Tests
+
+```sh
+make check
 ```
 
 ## Install
