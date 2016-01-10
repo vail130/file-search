@@ -17,4 +17,5 @@ make install
 ```sh
 filesearch /path-to-search/ "*.js"
 filesearch /path-to-search/ "^.+\.js$" -r
+filesearch /path-to-search/ "*.js" -t f
 ```
