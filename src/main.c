@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "../lib/argp/include/argp.h"
@@ -12,6 +13,7 @@ static struct argp_option options[] = {
     { "regex", 'r', 0, 0, "Use regular expression pattern to match filenames."},
     { "type", 't', "TYPE", 0, "Types of objects to include in output: f (files) or d (directories)"},
     { "stats", 's', 0, 0, "Print stats for each result."},
+    { "output", 'o', "FILE", 0, "Output to FILE instead of standard output" },
     { 0 }
 };
 const int NUM_ARGS = 2;
@@ -20,6 +22,7 @@ struct arguments {
     PatternMode mode;
     ResultType type;
     bool show_stats;
+    char *output_file;
 };
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
@@ -39,6 +42,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             } else {
                 arguments->type = ALL_TYPE;
             }
+            break;
+        case 'o':
+            arguments->output_file = arg;
             break;
         case ARGP_KEY_ARG:
             if (state->arg_num >= NUM_ARGS) {
@@ -64,12 +70,14 @@ int main(int argc, char *argv[]) {
     arguments.mode = GLOB_MODE;
     arguments.type = ALL_TYPE;
     arguments.show_stats = false;
+    arguments.output_file = "-";
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
     Config opts;
     opts.mode = arguments.mode;
     opts.type = arguments.type;
     opts.show_stats = arguments.show_stats;
-    return filesearch(arguments.args[0], arguments.args[1], opts);
+    opts.output_file = arguments.output_file;
+    exit(filesearch(arguments.args[0], arguments.args[1], opts));
 }
 

@@ -9,6 +9,7 @@ typedef struct config {
     PatternMode mode;
     ResultType type;
     bool show_stats;
+    char *output_file;
 } Config;
 
 int filesearch(const char *path, const char *pattern, Config opts);
