@@ -54,6 +54,18 @@ bool object_matches_type(const char *path, ResultType type) {
     }
 }
 
+int print_object_with_stats(const char *path) {
+    struct stat s;
+    int stat_return = stat(path, &s);
+    if (stat_return != -1) {
+        printf("%s\t%lld\t%ld\t%ld\t%ld\t%d\t%d\t%d\n",
+                path, s.st_size,
+                s.st_atime, s.st_mtime, s.st_ctime,
+                s.st_uid, s.st_gid, s.st_dev);
+    }
+    return stat_return;
+}
+
 int print_glob_matching_files(const char *path, const char *pattern, Config opts) {
     bool path_has_slash = strncmp(&path[strlen(path)-1], "/", 1) == 0 ? 1 : 0;
     char* fixed_path = (char *)malloc(sizeof(char*) * strlen(path) + (path_has_slash ? 0 : 1));
@@ -83,14 +95,7 @@ int print_glob_matching_files(const char *path, const char *pattern, Config opts
         }
 
         if (opts.show_stats) {
-            struct stat s;
-            int stat_return = stat(paths.gl_pathv[idx], &s);
-            if (stat_return != -1) {
-                printf("%s\t%lld\t%ld\t%ld\t%ld\t%d\t%d\t%d\n",
-                        paths.gl_pathv[idx], s.st_size,
-                        s.st_atime, s.st_mtime, s.st_ctime,
-                        s.st_uid, s.st_gid, s.st_dev);
-            }
+            print_object_with_stats(paths.gl_pathv[idx]);
         } else {
             puts(paths.gl_pathv[idx]);
         }
@@ -157,14 +162,7 @@ int print_regex_matching_files(const char *path, regex_t regex, Config opts) {
             }
 
             if (opts.show_stats) {
-                struct stat s;
-                int stat_return = stat(sub_dir_path, &s);
-                if (stat_return != -1) {
-                    printf("%s\t%lld\t%ld\t%ld\t%ld\t%d\t%d\t%d\n",
-                            sub_dir_path, s.st_size,
-                            s.st_atime, s.st_mtime, s.st_ctime,
-                            s.st_uid, s.st_gid, s.st_dev);
-                }
+                print_object_with_stats(sub_dir_path);
             } else {
                 puts(sub_dir_path);
             }
@@ -211,7 +209,7 @@ int filesearch(const char *path, const char *pattern, Config opts) {
     }
 }
 
-const char *argp_program_version = "filesearch 0.0.2";
+const char *argp_program_version = "filesearch 0.0.3";
 const char *argp_program_bug_address = "https://github.com/vail130/filesearch/issues";
 static char doc[] = "Find files with an easy syntax";
 static char args_doc[] = "[PATH] [PATTERN]";
