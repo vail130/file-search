@@ -34,9 +34,17 @@
 # Generated files
 autom4te.cache/
 Makefile
+config.status
+config.h
 
 # Logs
 *.log
 *.trs
 *.test
+
+# Make outputs
+src/filesearch
+src/.libs/
+tests/.libs/
+tests/check_filesearch
 
