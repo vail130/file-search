@@ -181,13 +181,9 @@ int print_regex_matching_files(const char *path, regex_t regex, Config opts) {
 }
 
 int filesearch(const char *path, const char *pattern, Config opts) {
-    DIR *dp;
-    dp = opendir(path);
-    if (dp == NULL) {
+    if (!object_matches_type(path, DIR_TYPE)) {
         fprintf(stderr, "Invalid directory: %s\n", path);
         return -1;
-    } else {
-        closedir(dp);
     }
     
     if (opts.mode == GLOB_MODE) {
