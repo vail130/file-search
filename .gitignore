@@ -33,6 +33,7 @@
 
 # Generated files
 autom4te.cache/
+Makefile
 
 # Logs
 *.log
