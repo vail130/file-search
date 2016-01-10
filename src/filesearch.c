@@ -48,16 +48,38 @@ bool object_matches_type(const char *path, ResultType type) {
     }
 }
 
-int print_object_with_stats(const char *path) {
-    struct stat s;
-    int stat_return = stat(path, &s);
-    if (stat_return != -1) {
-        printf("%s\t%lld\t%ld\t%ld\t%ld\t%d\t%d\t%d\n",
-                path, s.st_size,
-                s.st_atime, s.st_mtime, s.st_ctime,
-                s.st_uid, s.st_gid, s.st_dev);
+int write_result_to_output_stream(const char *path, Config opts) {
+    if (!object_matches_type(path, opts.type)) {
+        return 0;
     }
-    return stat_return;
+
+    char *result;
+    if (opts.show_stats) {
+        struct stat s;
+        if (stat(path, &s) != -1) {
+            asprintf(&result, "%s\t%lld\t%ld\t%ld\t%ld\t%d\t%d\t%d",
+                     path, s.st_size,
+                     s.st_atime, s.st_mtime, s.st_ctime,
+                     s.st_uid, s.st_gid, s.st_dev);
+        } else {
+            // Print what we have in consistent format
+            asprintf(&result, "%s\t\t\t\t\t\t\t", path);
+        }
+    } else {
+        asprintf(&result, "%s", path);
+    }
+
+    if (strcmp(opts.output_file, "-") == 0) {
+        printf("%s\n", result);
+    } else {
+        FILE * fp;
+        fp = fopen(opts.output_file, "a");
+        fprintf(fp, "%s\n", result);
+        fclose(fp);
+    }
+
+    free(result);
+    return 0;
 }
 
 int print_glob_matching_files(const char *path, const char *pattern, Config opts) {
@@ -79,27 +101,19 @@ int print_glob_matching_files(const char *path, const char *pattern, Config opts
    
     int retval = glob(full_pattern, GLOB_NOSORT, NULL, &paths);
     if(retval != 0 && retval != GLOB_NOMATCH) {
-        printf("glob() failed with error: %d\n", retval);
+        fprintf(stderr, "glob() failed with error: %d\n", retval);
         return retval;
     }
     
     for(int idx = 0; idx < paths.gl_pathc; idx++) {
-        if (!object_matches_type(paths.gl_pathv[idx], opts.type)) {
-            continue;
-        }
-
-        if (opts.show_stats) {
-            print_object_with_stats(paths.gl_pathv[idx]);
-        } else {
-            puts(paths.gl_pathv[idx]);
-        }
+        write_result_to_output_stream(paths.gl_pathv[idx], opts);
     }
     globfree(&paths);
     
     DIR *dp;
     dp = opendir(fixed_path);
     if (dp == NULL) {
-        return -1;
+        return 0;
     }
     
     struct dirent *entry;
@@ -118,7 +132,7 @@ int print_glob_matching_files(const char *path, const char *pattern, Config opts
 
     free(fixed_path);
     closedir(dp);
-    return retval;
+    return 0;
 }
 
 int print_regex_matching_files(const char *path, regex_t regex, Config opts) {
@@ -132,7 +146,7 @@ int print_regex_matching_files(const char *path, regex_t regex, Config opts) {
     DIR *dp;
     dp = opendir(fixed_path);
     if (dp == NULL) {
-        return -1;
+        return 0;
     }
 
     struct dirent *entry;
@@ -147,16 +161,8 @@ int print_regex_matching_files(const char *path, regex_t regex, Config opts) {
 
         // Print filename that matches regular expression
         int reti = regexec(&regex, entry->d_name, 0, NULL, 0);
-        if (reti == 0 && object_matches_type(sub_dir_path, opts.type)) {
-            if (!object_matches_type(sub_dir_path, opts.type)) {
-                continue;
-            }
-
-            if (opts.show_stats) {
-                print_object_with_stats(sub_dir_path);
-            } else {
-                puts(sub_dir_path);
-            }
+        if (reti == 0) {
+            write_result_to_output_stream(sub_dir_path, opts);
         }
 
         if (object_matches_type(sub_dir_path, DIR_TYPE)) {
@@ -190,6 +196,7 @@ int filesearch(const char *path, const char *pattern, Config opts) {
         regfree(&regex);
         return retval;
     } else {
+        fprintf(stderr, "Invalid pattern mode\n");
         return -1;
     }
 }

@@ -3,20 +3,52 @@
 #include <check.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "../src/filesearch.h"
 
+int write_file_to_buffer(const char *file_path, char *buffer) {
+    FILE *f = fopen(file_path, "rb");
+    if (f == NULL) {
+        return -1;
+    }
+
+    fseek(f, 0, SEEK_END);
+    long length = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    
+    realloc(buffer, length);
+    fread(buffer, 1, length, f);
+    fclose(f);
+    return 0;
+}
+
+
 START_TEST(test_filesearch_matches_glob_pattern)
 {
-    char* cwd;
-    char buff[PATH_MAX + 1];
-    cwd = getcwd(buff, PATH_MAX + 1);
-    puts(cwd);
-    strcat(cwd, "/fixtures/");
-    Config opts = { GLOB_MODE, ALL_TYPE, 0 };
-    int retval = filesearch(cwd, "*", opts);
-    ck_assert (retval == 0);
+    char buff1[PATH_MAX + 1];
+    char *fixture_path = getcwd(buff1, PATH_MAX + 1);
+    strcat(fixture_path, "/fixtures/");
+    
+    char buff2[PATH_MAX + 1];
+    char *output_file_path = getcwd(buff2, PATH_MAX + 1);
+    strcat(output_file_path, "/fixtures/output.test");
+   
+    unlink(output_file_path);
+
+    Config opts = { GLOB_MODE, ALL_TYPE, 0, output_file_path };
+    int retval = filesearch(fixture_path, "*.json", opts);
+    ck_assert_msg (retval == 0, "filesearch failed");
+
+    char *buff3 = malloc(1);
+    retval = write_file_to_buffer(output_file_path, buff3);
+
+    ck_assert_msg (retval == 0, "write_file_to_buffer failed");
+    ck_assert_msg (strstr(buff3, "/filesearch/tests/fixtures/a/a1/test.json") != NULL, "correct file path not found in output file");
+    ck_assert_msg (strstr(buff3, "/filesearch/tests/fixtures/c/test") == NULL, "incorrect file path found in output file");
+
+    free(buff3);
 }
 END_TEST
 
