@@ -8,39 +8,6 @@
 #include <string.h>
 #include <unistd.h>
 
-const char *argp_program_version = "file-search 0.0.1";
-const char *argp_program_bug_address = "";
-static char doc[] = "Find files with an easy syntax";
-static char args_doc[] = "[PATH] [PATTERN]";
-static struct argp_option options[] = { 
-    { "regex", 'r', 0, 0, "Use regular expression pattern to match filenames."},
-    { 0 }
-};
-
-typedef enum { GLOB_MODE, REGEX_MODE } PatternMode;
-struct arguments {
-    char *args[2];
-    PatternMode mode;
-};
-
-static error_t parse_opt(int key, char *arg, struct argp_state *state) {
-    struct arguments *arguments = state->input;
-    switch (key) {
-        case 'r': arguments->mode = REGEX_MODE; break;
-        case ARGP_KEY_ARG:
-            if (state->arg_num >= 2) {
-                /* Too many arguments. */
-                argp_usage(state);
-            }
-            arguments->args[state->arg_num] = arg;
-            break; 
-        default: return ARGP_ERR_UNKNOWN;
-    }   
-    return 0;
-}
-
-static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
-
 int print_glob_matching_files(const char *path, const char *pattern) {
     bool path_has_slash = strncmp(&path[strlen(path)-1], "/", 1) == 0 ? 1 : 0;
     char* fixed_path = (char *)malloc(sizeof(char*) * strlen(path) + (path_has_slash ? 0 : 1));
@@ -138,7 +105,18 @@ int print_regex_matching_files(const char *path, regex_t regex) {
     return 0;
 }
 
-int print_matching_files(const char *path, const char *pattern, PatternMode mode) {
+typedef enum { GLOB_MODE, REGEX_MODE } PatternMode;
+
+int filesearch(const char *path, const char *pattern, PatternMode mode) {
+    DIR *dp;
+    dp = opendir(path);
+    if (dp == NULL) {
+        fprintf(stderr, "Invalid directory: %s\n", path);
+        return -1;
+    } else {
+        closedir(dp);
+    }
+    
     if (mode == GLOB_MODE) {
         return print_glob_matching_files(path, pattern);
     } else if (mode == REGEX_MODE) {
@@ -158,10 +136,48 @@ int print_matching_files(const char *path, const char *pattern, PatternMode mode
     }
 }
 
+const char *argp_program_version = "filesearch 0.0.1";
+const char *argp_program_bug_address = "https://github.com/vail130/filesearch/issues";
+static char doc[] = "Find files with an easy syntax";
+static char args_doc[] = "[PATH] [PATTERN]";
+static struct argp_option options[] = { 
+    { "regex", 'r', 0, 0, "Use regular expression pattern to match filenames."},
+    { 0 }
+};
+const int NUM_ARGS = 2;
+struct arguments {
+    char *args[2];
+    PatternMode mode;
+};
+
+static error_t parse_opt(int key, char *arg, struct argp_state *state) {
+    struct arguments *arguments = state->input;
+    switch (key) {
+        case 'r':
+            arguments->mode = REGEX_MODE;
+            break;
+        case ARGP_KEY_ARG:
+            if (state->arg_num >= NUM_ARGS) {
+                argp_usage(state);
+            }
+            arguments->args[state->arg_num] = arg;
+            break;
+        case ARGP_KEY_END:
+            if (state->arg_num < NUM_ARGS) {
+                argp_usage(state);
+            }
+            break;
+        default:
+            return ARGP_ERR_UNKNOWN;
+    }   
+    return 0;
+}
+
+static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
+
 int main(int argc, char *argv[]) {
     struct arguments arguments;
     arguments.mode = GLOB_MODE;
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
-    printf("1: %s, 2: %s\n", arguments.args[0], arguments.args[1]);
-    return print_matching_files(arguments.args[0], arguments.args[1], arguments.mode);
+    return filesearch(arguments.args[0], arguments.args[1], arguments.mode);
 }

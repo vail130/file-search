@@ -12,5 +12,9 @@ build:
 	make clean
 	cc $(CFLAGS) src/filesearch.c -o build/filesearch
 
+install:
+	make build
+	./scripts/install.sh
+
 .PHONY: build
 
