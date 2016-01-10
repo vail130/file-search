@@ -104,8 +104,9 @@ int print_glob_matching_files(const char *path, const char *pattern, Config opts
         fprintf(stderr, "glob() failed with error: %d\n", retval);
         return retval;
     }
-    
-    for(int idx = 0; idx < paths.gl_pathc; idx++) {
+   
+    int idx;
+    for(idx = 0; idx < paths.gl_pathc; idx++) {
         write_result_to_output_stream(paths.gl_pathv[idx], opts);
     }
     globfree(&paths);
