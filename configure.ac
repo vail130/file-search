@@ -15,6 +15,10 @@ AC_CONFIG_AUX_DIR([build-aux])
 # change foreign to gnu or gnits to comply with gnu standards
 AM_INIT_AUTOMAKE([-Wall -Werror foreign 1.11.2])
 
+AM_CONDITIONAL([DARWIN], [test $(uname) = "Darwin"])
+
+AM_MAINTAINER_MODE([disable])
+
 AC_CONFIG_MACRO_DIR([m4])
 
 # Checks for programs.
