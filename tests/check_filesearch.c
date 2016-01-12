@@ -8,20 +8,20 @@
 
 #include "../src/filesearch.h"
 
-int write_file_to_buffer(const char *file_path, char *buffer) {
+char* write_file_to_buffer(const char *file_path, char *buffer) {
     FILE *f = fopen(file_path, "rb");
     if (f == NULL) {
-        return -1;
+        return buffer;
     }
 
     fseek(f, 0, SEEK_END);
     long length = ftell(f);
     fseek(f, 0, SEEK_SET);
     
-    realloc(buffer, length);
+    buffer = realloc(buffer, length);
     fread(buffer, 1, length, f);
     fclose(f);
-    return 0;
+    return buffer;
 }
 
 
@@ -41,14 +41,13 @@ START_TEST(test_filesearch_matches_glob_pattern)
     int retval = filesearch(fixture_path, "*.json", opts);
     ck_assert_msg (retval == 0, "filesearch failed");
 
-    char *buff3 = malloc(1);
-    retval = write_file_to_buffer(output_file_path, buff3);
+    char *buffer = malloc(0);
+    buffer = write_file_to_buffer(output_file_path, buffer);
 
-    ck_assert_msg (retval == 0, "write_file_to_buffer failed");
-    ck_assert_msg (strstr(buff3, "/filesearch/tests/fixtures/a/a1/test.json") != NULL, "correct file path not found in output file");
-    ck_assert_msg (strstr(buff3, "/filesearch/tests/fixtures/c/test") == NULL, "incorrect file path found in output file");
+    ck_assert_msg (strstr(buffer, "/filesearch/tests/fixtures/a/a1/test.json") != NULL, "correct file path not found in output file");
+    ck_assert_msg (strstr(buffer, "/filesearch/tests/fixtures/c/test") == NULL, "incorrect file path found in output file");
 
-    free(buff3);
+    free(buffer);
 }
 END_TEST
 
