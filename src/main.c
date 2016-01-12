@@ -2,7 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if __APPLE__
 #include "../lib/argp/include/argp.h"
+#else
+#include <argp.h>
+#endif
+
 #include "filesearch.h"
 
 const char *argp_program_version = "filesearch 0.0.3";
