@@ -1,4 +1,4 @@
-# filesearch
+# filesearch ![Build Status](https://travis-ci.org/vail130/filesearch.svg)
 
 ## Setup
 
